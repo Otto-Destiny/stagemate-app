@@ -45,9 +45,10 @@ class Venue(db.Model):
     phone = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
+    artists = db.relationship('Artist', secondary='shows', backref=db.backref('venue', lazy=True))
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
+    
 class Artist(db.Model):
     __tablename__ = 'Artist'
 
@@ -62,8 +63,21 @@ class Artist(db.Model):
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+# TODO Implement Show and Artist models, and complete all model relationships 
+# and properties, as a database migration.
 
+Shows = db.Table('shows',
+    db.Column('venue_id', db.Integer, db.ForeignKey(Venue.id)),
+    db.Column('artist_id', db.Integer, db.ForeignKey(Artist.id)),
+    db.Column('Date', db.DateTime()),
+    db.Column('contact', db.String(20)),
+    db.Column('facebook_link', db.String(120)),
+    db.Column('image_link', db.String(120))
+    )
+  
+
+with app.app_context():
+    db.create_all()
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#
@@ -94,6 +108,9 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
+#  with app.app_context():
+    #todos = Todo.query.filter_by(list_id=list_id).order_by('id').all()
+    #lists = TodoList.query.all()
   data=[{
     "city": "San Francisco",
     "state": "CA",
