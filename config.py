@@ -10,4 +10,4 @@ DEBUG = True
 
 
 '''TODO IMPLEMENT DATABASE URL'''
-SQLALCHEMY_DATABASE_URI = 'postgresql://stevejohn:19370@localhost:5432/stagemate1'
+SQLALCHEMY_DATABASE_URI = 'postgresql://stevejohn:19370@localhost:5432/stagemate2'

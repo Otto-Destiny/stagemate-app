@@ -27,7 +27,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # TODO: connect to a local postgresql database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://stevejohn:19370@localhost:5432/stagemate1'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://stevejohn:19370@localhost:5432/stagemate2'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 #----------------------------------------------------------------------------#
@@ -35,7 +35,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 #----------------------------------------------------------------------------#
 
 class Venue(db.Model):
-    __tablename__ = 'Venue'
+    __tablename__ = 'venue'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
@@ -50,7 +50,7 @@ class Venue(db.Model):
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     
 class Artist(db.Model):
-    __tablename__ = 'Artist'
+    __tablename__ = 'artist'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
@@ -108,10 +108,9 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
-#  with app.app_context():
-    #todos = Todo.query.filter_by(list_id=list_id).order_by('id').all()
-    #lists = TodoList.query.all()
-  data=[{
+  with app.app_context():
+    venue_data = Venue.query.all()
+  '''data=[{
     "city": "San Francisco",
     "state": "CA",
     "venues": [{
@@ -131,8 +130,8 @@ def venues():
       "name": "The Dueling Pianos Bar",
       "num_upcoming_shows": 0,
     }]
-  }]
-  return render_template('pages/venues.html', areas=data);
+  }]'''
+  return render_template('pages/venues.html', areas=venue_data);
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
