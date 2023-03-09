@@ -164,9 +164,9 @@ def venues():
         })
 
     # Convert the dictionary to a list
-    data = [grouped_venues[k] for k in grouped_venues]
+    venue_data = [grouped_venues[k] for k in grouped_venues]
 
-    return render_template('pages/venues.html', areas=data)
+    return render_template('pages/venues.html', areas=venue_data)
 
 
 @app.route('/venues/search', methods=['POST'])
