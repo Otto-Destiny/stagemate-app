@@ -10,6 +10,7 @@ import dateutil.parser
 from flask import Flask, Response, flash, redirect, render_template, request, url_for
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 from flask_wtf import Form
 from flask_migrate import Migrate
 
@@ -45,7 +46,7 @@ class Venue(db.Model):
     phone = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
-    artists = db.relationship('Artist', secondary='shows', backref=db.backref('venue', lazy=True))
+    artists = db.relationship('Artist', secondary='shows', backref=db.backref('venues', lazy=True))
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     
@@ -104,13 +105,13 @@ def index():
 #  Venues
 #  ----------------------------------------------------------------
 
-@app.route('/venues')
+'''@app.route('/venues')
 def venues():
   # TODO: replace with real venues data.
   #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
   with app.app_context():
-    venue_data = Venue.query.all()
-  '''data=[{
+    #venue_data = Venue.query.all()
+    data=[{
     "city": "San Francisco",
     "state": "CA",
     "venues": [{
@@ -130,8 +131,43 @@ def venues():
       "name": "The Dueling Pianos Bar",
       "num_upcoming_shows": 0,
     }]
-  }]'''
-  return render_template('pages/venues.html', areas=venue_data);
+  }]
+  return render_template('pages/venues.html', areas=data);'''
+
+
+
+@app.route('/venues')
+def venues():
+    # Get the venues and upcoming show counts
+    venues = db.session.query(
+        Venue.city,
+        Venue.state,
+        Venue.id,
+        Venue.name,
+        func.count(Shows.c.Date).filter(Shows.c.Date > datetime.now())
+    ).outerjoin(Shows).group_by(Venue.id, Venue.city, Venue.state).all()
+
+    # Group the venues by city and state
+    grouped_venues = {}
+    for venue in venues:
+        city_state = (venue.city, venue.state)
+        if city_state not in grouped_venues:
+            grouped_venues[city_state] = {
+                "city": venue.city,
+                "state": venue.state,
+                "venues": []
+            }
+        grouped_venues[city_state]["venues"].append({
+            "id": venue.id,
+            "name": venue.name,
+            "num_upcoming_shows": venue[4] or 0
+        })
+
+    # Convert the dictionary to a list
+    data = [grouped_venues[k] for k in grouped_venues]
+
+    return render_template('pages/venues.html', areas=data)
+
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
