@@ -14,6 +14,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from flask_wtf import Form
 from flask_migrate import Migrate
+from sqlalchemy.orm import mapper
 
 from forms import *
 
@@ -47,7 +48,12 @@ class Venue(db.Model):
     phone = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
-    artists = db.relationship('Artist', secondary='shows', backref=db.backref('venues', lazy=True))
+    website = db.Column(db.String(120))
+    genre = db.Column(db.String(120))
+    seeking_talent = db.Column(db.String(120))
+    seeking_description = db.Column(db.String(120))
+    shows = db.relationship('ShowClass', backref='venue', lazy=True)
+    #artists = db.relationship('Artist', secondary='shows', backref=db.backref('venues', lazy=True))
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
     
@@ -62,12 +68,21 @@ class Artist(db.Model):
     genres = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
+    website = db.Column(db.String(120))
+    shows = db.relationship('ShowClass', backref='artist', lazy=True)
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
+class ShowClass(db.Model):
+    __tablename__ = 'shows'
+
+    id = db.Column(db.Integer, primary_key=True)
+    start_time = db.Column(db.DateTime, nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), nullable=False)
+    artist_id = db.Column(db.Integer, db.ForeignKey('artist.id'), nullable=False)
 # TODO Implement Show and Artist models, and complete all model relationships 
 # and properties, as a database migration.
-
+'''
 Shows = db.Table('shows',
     db.Column('venue_id', db.Integer, db.ForeignKey(Venue.id)),
     db.Column('artist_id', db.Integer, db.ForeignKey(Artist.id)),
@@ -76,7 +91,11 @@ Shows = db.Table('shows',
     db.Column('facebook_link', db.String(120)),
     db.Column('image_link', db.String(120))
     )
-  
+'''
+
+
+#db.registry.map_imperatively(ShowClass, db.Model.metadata.tables['shows'])
+#mapper(ShowClass, Shows)
 
 with app.app_context():
     db.create_all()
@@ -145,8 +164,8 @@ def venues():
         Venue.state,
         Venue.id,
         Venue.name,
-        func.count(Shows.c.Date).filter(Shows.c.Date > datetime.now())
-    ).outerjoin(Shows).group_by(Venue.id, Venue.city, Venue.state).all()
+        func.count(ShowClass.id).filter(ShowClass.start_time > datetime.now())
+    ).outerjoin(ShowClass).group_by(Venue.id, Venue.city, Venue.state).all()
 
     # Group the venues by city and state
     grouped_venues = {}
@@ -187,8 +206,8 @@ def search_venues():
       "data": [{
         "id": venue.id,
         "name": venue.name,
-        "num_upcoming_shows": len([show for show in db.session.query(Shows).filter_by(venue_id=venue.id).all() 
-                                  if show.Date is not None and show.Date > datetime.now()]),
+        "num_upcoming_shows": len([show for show in db.session.query(ShowClass).filter_by(venue_id=venue.id).all() 
+                                  if ShowClass.start_time is not None and ShowClass.start_time > datetime.now()])
       } for venue in results]
     }
     db.session.close()
@@ -198,7 +217,59 @@ def search_venues():
 def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
-  data1={
+  
+  with app.app_context():
+    venue = Venue.query.get(venue_id)
+    upcoming_shows = list(db.session.query(ShowClass).join(Artist).filter(
+      ShowClass.venue_id == venue_id,
+      ShowClass.start_time > datetime.now()
+      ).all())
+    
+    past_shows = list(db.session.query(ShowClass).join(Artist).filter(
+    ShowClass.venue_id == venue_id,
+    ShowClass.start_time < datetime.now()
+    ).all())
+    
+    data= {
+      "id": venue.id,
+      "name": venue.name,
+      "genre": venue.genre,
+      "address": venue.address,
+      "city": venue.city,
+      "state": venue.state,
+      "phone": venue.phone,
+      "website": venue.website,
+      "facebook_link": venue.facebook_link,
+      "seeking_talent": venue.seeking_talent,
+      "seeking_description": venue.seeking_description,
+      "image_link": venue.image_link,
+      
+      "past_shows": [{
+        'artist_id': show.artist.id,
+        'artist_name': show.artist.name,
+        'artist_image_link': show.artist.image_link,
+        'start_time': str(show.start_time)
+        } for show in past_shows if show.artist.id is not None],
+      
+      "upcoming_shows": [{
+        'artist_id': show.artist.id,
+        'artist_name': show.artist.name,
+        'artist_image_link': show.artist.image_link,
+        'start_time': str(show.start_time)
+        } for show in upcoming_shows if show.artist.id is not None],
+      
+      "past_shows_count": len(past_shows),
+      "upcoming_shows_count": len(upcoming_shows)
+
+    }
+    
+      
+    #data = [d for d in venue_data if d['id'] == venue_id][0]
+    #data = list(filter(lambda d: d['id'] == venue_id, [venue_data]))[0]
+    return render_template('pages/show_venue.html', venue=data)
+  
+  
+  '''data1={
     "id": 1,
     "name": "The Musical Hop",
     "genres": ["Jazz", "Reggae", "Swing", "Classical", "Folk"],
@@ -277,10 +348,10 @@ def show_venue(venue_id):
   }
   data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
   template = render_template('pages/show_venue.html', venue=data)
-  return lambda: template
+  return lambda: template'''
 
-  '''data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
-  return render_template('pages/show_venue.html', venue=data)'''
+  #data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
+  #return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
 #  ----------------------------------------------------------------
@@ -311,8 +382,9 @@ def delete_venue(venue_id):
   # clicking that button delete it from the db then redirect the user to the homepage
   return None
 
+# -------------------------------------------------------------------
 #  Artists
-#  ----------------------------------------------------------------
+# -------------------------------------------------------------------
 @app.route('/artists')
 def artists():
   # TODO: replace with real data returned from querying the database
@@ -418,12 +490,12 @@ def show_artist(artist_id):
     "past_shows_count": 0,
     "upcoming_shows_count": 3,
   }
-  data = list(filter(lambda d: d['id'] == artist_id, [data1, data2, data3]))[0]
-  template = lambda: render_template('pages/show_artist.html', artist=data)
-  return template()
-
   '''data = list(filter(lambda d: d['id'] == artist_id, [data1, data2, data3]))[0]
-  return render_template('pages/show_artist.html', artist=data)'''
+  template = lambda: render_template('pages/show_artist.html', artist=data)
+  return template()'''
+
+  data = list(filter(lambda d: d['id'] == artist_id, [data1, data2, data3]))[0]
+  return render_template('pages/show_artist.html', artist=data)
 
 #  Update
 #  ----------------------------------------------------------------
