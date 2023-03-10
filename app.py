@@ -4,6 +4,7 @@
 import json
 import logging
 from logging import Formatter, FileHandler
+from datetime import datetime
 
 import babel
 import dateutil.parser
@@ -168,21 +169,30 @@ def venues():
 
     return render_template('pages/venues.html', areas=venue_data)
 
+from sqlalchemy.orm import sessionmaker
+
+
+
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
-  response={
-    "count": 1,
-    "data": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }
-  return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+  with app.app_context():
+    search_term=request.form.get('search_term', '')
+    results = [venue for venue in Venue.query.filter(func.lower(Venue.name).contains(search_term.lower()))]
+    response={
+      "count": len(results),
+      "data": [{
+        "id": venue.id,
+        "name": venue.name,
+        "num_upcoming_shows": len([show for show in db.session.query(Shows).filter_by(venue_id=venue.id).all() 
+                                  if show.Date is not None and show.Date > datetime.now()]),
+      } for venue in results]
+    }
+    db.session.close()
+    return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
@@ -266,7 +276,11 @@ def show_venue(venue_id):
     "upcoming_shows_count": 1,
   }
   data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
-  return render_template('pages/show_venue.html', venue=data)
+  template = render_template('pages/show_venue.html', venue=data)
+  return lambda: template
+
+  '''data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
+  return render_template('pages/show_venue.html', venue=data)'''
 
 #  Create Venue
 #  ----------------------------------------------------------------
@@ -405,7 +419,11 @@ def show_artist(artist_id):
     "upcoming_shows_count": 3,
   }
   data = list(filter(lambda d: d['id'] == artist_id, [data1, data2, data3]))[0]
-  return render_template('pages/show_artist.html', artist=data)
+  template = lambda: render_template('pages/show_artist.html', artist=data)
+  return template()
+
+  '''data = list(filter(lambda d: d['id'] == artist_id, [data1, data2, data3]))[0]
+  return render_template('pages/show_artist.html', artist=data)'''
 
 #  Update
 #  ----------------------------------------------------------------
