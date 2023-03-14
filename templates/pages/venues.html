@@ -12,8 +12,28 @@
 					<h5>{{ venue.name }}</h5>
 				</div>
 			</a>
-		</li>
+			<form action="{{ url_for('delete_venue', venue_id=venue.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this venue?')">
+				<input type="hidden" name="_method" value="DELETE">
+				<button type="submit" class="btn btn-danger">Delete</button>
+			</form>
 		{% endfor %}
 	</ul>
 {% endfor %}
 {% endblock %}
+<script>
+	const delbuttons = document.querySelectorAll('.delbutton');
+	for (let i = 0; i < delbuttons.length; i++) {
+	  const btn = delbuttons[i];
+	  btn.onclick = function(e) {
+		console.log('event', e);
+		const venueId = e.target.dataset['id'];
+		fetch('/venues/' + venueId, {
+		  method: 'DELETE'
+		})
+		.then(function() {
+		  const item = e.target.parentElement;
+		  item.remove();
+	  });
+	}
+  }
+</script>
